@@ -5,7 +5,6 @@ import tensorflow as tf
 import pandas as pd
 import time
 import argparse
-import os
 import config
 from keras.models import Sequential
 from keras.layers import Bidirectional
@@ -13,6 +12,7 @@ from keras.layers import Dense
 from keras.layers import LSTM
 from keras.layers import Dropout
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
 
 # general setup
 lg.getLogger().setLevel(lg.INFO)
@@ -33,19 +33,9 @@ if gpus:
 
 # # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument(
-    "-d",
-    "--dataset",
-    type=str,
-    required=True,
-    help="path to the .csv file training dataset",
+ap.add_argument("-d","--dataset",type=str,required=True,help="path to the .csv file training dataset",
 )
-ap.add_argument(
-    "-p",
-    "--plot",
-    type=str,
-    default="./plot",
-    help="path to folder to plot the model loss/accuracy and test graph",
+ap.add_argument("-p","--plot",type=str,default="./plot",help="path to folder to plot the model loss/accuracy and test graph",
 )
 args = vars(ap.parse_args())
 
@@ -71,7 +61,7 @@ lg.info("Preparing dataset for training...")
 
 train_split = config.TRAIN_SPLIT
 split_idx = int(len(data) * train_split)
-training_set = data[:split_idx].to_numpy()
+training_set = data[:split_idx]
 
 n_future = config.N_FUTUR # Next days weather forecast
 n_past = config.N_PAST # Past days to predict
@@ -85,7 +75,6 @@ for i in range(0, len(training_set) - n_past - n_future + 1):
 # format the data
 x_train, y_train = np.array(x_train), np.array(y_train)
 x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
-
 # build the RNN model
 lg.info("Building of the model...")
 
@@ -102,10 +91,10 @@ model.add(LSTM(units=30, return_sequences=True))
 model.add(Dropout(0.2))
 model.add(LSTM(units=30))
 model.add(Dropout(0.2))
-model.add(Dense(units=n_future, activation="relu"))
+model.add(Dense(units=n_future, activation="linear"))
 
 # Compiling the RNN
-model.compile(optimizer="adam", loss="mean_squared_error", metrics="accuracy")
+model.compile(optimizer="adam", loss="mean_squared_error", metrics=["accuracy"])
 
 # train the model
 lg.info("Start training...")
