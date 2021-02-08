@@ -6,6 +6,7 @@ import pandas as pd
 import time
 import argparse
 import os
+import config
 from keras.models import Sequential
 from keras.layers import Bidirectional
 from keras.layers import Dense
@@ -43,8 +44,8 @@ ap.add_argument(
     "-p",
     "--plot",
     type=str,
-    default="plot.png",
-    help="path to output loss/accuracy plot",
+    default="./plot",
+    help="path to folder to plot the model loss/accuracy and test graph",
 )
 args = vars(ap.parse_args())
 
@@ -53,41 +54,37 @@ lg.info("Program starting :")
 start = time.time()
 
 # initialize the number of epochs to train for and batch size
-EPOCHS = 500
-BS = 32
+EPOCHS = config.N_EPOCHS
+BS = config.BS
 
 # reading data
 lg.info("Reading the data...")
 
-# dataset = pd.read_csv('dataset.csv')
-dataset = pd.read_csv(args["dataset"])
-data = dataset["rainfall"]
+# it is assumed that the data are written in the second column, separated by commas, with no header
+dataset = pd.read_csv(args["dataset"], header=None, sep=',')
+# dataset = pd.read_csv('data/weather_processed.csv', header=None, sep=',')
+data = dataset[1]
 
 # partition the data into training and testing splits
 # 5-day prediction using 30 days data
-lg.info("Preparing dataset for training and testing...")
+lg.info("Preparing dataset for training...")
 
-train_split = 0.8  # using 80% of the values for training
-split_idx = int(len(data) * 0.9)
-training_set = data[:split_idx].values
-test_set = data[split_idx:].values
+train_split = config.TRAIN_SPLIT
+split_idx = int(len(data) * train_split)
+training_set = data[:split_idx].to_numpy()
+
+n_future = config.N_FUTUR # Next days weather forecast
+n_past = config.N_PAST # Past days to predict
 
 x_train = []
 y_train = []
-n_future = 5  # Next 5 days weather forecast
-n_past = 30  # Past 30 days
 for i in range(0, len(training_set) - n_past - n_future + 1):
     x_train.append(training_set[i : i + n_past])
     y_train.append(training_set[i + n_past : i + n_past + n_future])
 
-x_test = test_set[:n_past]
-y_test = test_set[n_past : n_past + n_future]
-
 # format the data
 x_train, y_train = np.array(x_train), np.array(y_train)
-x_test, y_test = np.array(x_test), np.array(y_test)
 x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
-x_test = np.reshape(x_test, (1, x_test.shape[0], 1))
 
 # build the RNN model
 lg.info("Building of the model...")
@@ -116,10 +113,6 @@ lg.info("Start training...")
 M = model.fit(x_train, y_train, epochs=EPOCHS, batch_size=BS, validation_split=0.1)
 
 lg.info(f"End of the model training within {round(time.time()-start,2)} seconds.")
-# make predictions on the testing set
-lg.info("Evaluating network...")
-
-pred = model.predict(x_test)
 
 # serialize the model to disk
 lg.info("Saving mask detector model...")
@@ -135,13 +128,27 @@ plt.title("Training Loss and Accuracy")
 plt.xlabel("Epoch #")
 plt.ylabel("Loss/Accuracy")
 plt.legend(loc="lower left")
-plt.savefig(args["plot"])
+plt.savefig(args["plot"]+'/model_stat.png')
+
+# test the model
+lg.info('Preparing data for testing...')
+
+test_set = data[split_idx:].to_numpy()
+
+x_test = test_set[: n_past]
+y_test = test_set[n_past : n_past + n_future]
+x_test, y_test = np.array(x_test), np.array(y_test)
+x_test = np.reshape(x_test, (1, x_test.shape[0], 1))
+
+lg.info("Evaluating network...")
+
+pred = model.predict(x_test)
 
 # visualize the predictions
 plt.figure()
-plt.plot(y_test, color="red", label="Original data")
-plt.plot(pred[0], color="cyan", label="Predicted data")
+plt.plot(y_test, 'o--', color="red", label="Original data")
+plt.plot(pred[0], 'o--', color="cyan", label="Predicted data")
 plt.legend()
-plt.savefig("testPlot.png")
+plt.savefig(args["plot"]+'/test_plot.png')
 
 lg.info(f"End of the script within {round(time.time()-start,2)} seconds.")
