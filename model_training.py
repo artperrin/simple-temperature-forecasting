@@ -11,8 +11,7 @@ from keras.layers import Bidirectional
 from keras.layers import Dense
 from keras.layers import LSTM
 from keras.layers import Dropout
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import load_model
 
 # general setup
 lg.getLogger().setLevel(lg.INFO)
@@ -33,9 +32,26 @@ if gpus:
 
 # # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-d","--dataset",type=str,required=True,help="path to the .csv file training dataset",
+ap.add_argument(
+    "-d",
+    "--dataset",
+    type=str,
+    required=True,
+    help="path to the .csv file training dataset",
 )
-ap.add_argument("-p","--plot",type=str,default="./plot",help="path to folder to plot the model loss/accuracy and test graph",
+ap.add_argument(
+    "-p",
+    "--plot",
+    type=str,
+    default="./plot",
+    help="path to folder to plot the model loss/accuracy and test graph",
+)
+ap.add_argument(
+    "-t",
+    "--test",
+    type=str,
+    default="n",
+    help="y/[n] if the user wants to test the model",
 )
 args = vars(ap.parse_args())
 
@@ -51,7 +67,7 @@ BS = config.BS
 lg.info("Reading the data...")
 
 # it is assumed that the data are written in the second column, separated by commas, with no header
-dataset = pd.read_csv(args["dataset"], header=None, sep=',')
+dataset = pd.read_csv(args["dataset"], header=None, sep=",")
 # dataset = pd.read_csv('data/weather_processed.csv', header=None, sep=',')
 data = dataset[1]
 
@@ -63,8 +79,8 @@ train_split = config.TRAIN_SPLIT
 split_idx = int(len(data) * train_split)
 training_set = data[:split_idx]
 
-n_future = config.N_FUTUR # Next days weather forecast
-n_past = config.N_PAST # Past days to predict
+n_future = config.N_FUTUR  # Next days weather forecast
+n_past = config.N_PAST  # Past days to predict
 
 x_train = []
 y_train = []
@@ -117,27 +133,60 @@ plt.title("Training Loss and Accuracy")
 plt.xlabel("Epoch #")
 plt.ylabel("Loss/Accuracy")
 plt.legend(loc="lower left")
-plt.savefig(args["plot"]+'/model_stat.png')
+plt.savefig(args["plot"] + "/model_stat.png")
+
 
 # test the model
-lg.info('Preparing data for testing...')
+lg.info("Testing the model...")
+
+model = load_model("model.h5")
 
 test_set = data[split_idx:].to_numpy()
 
-x_test = test_set[: n_past]
-y_test = test_set[n_past : n_past + n_future]
-x_test, y_test = np.array(x_test), np.array(y_test)
-x_test = np.reshape(x_test, (1, x_test.shape[0], 1))
+res_test = test_set[:n_past]
 
-lg.info("Evaluating network...")
-
-pred = model.predict(x_test)
+for i in range(len(test_set) - n_past):
+    to_predict = np.array(test_set[i : i + n_past])
+    to_predict = np.reshape(to_predict, (1, to_predict.shape[0], 1))
+    pred = model.predict(to_predict)
+    res_test = np.concatenate((res_test, pred[0][0]), axis=None)
+    print(f"Progress of test : {i}/{len(test_set)-n_past}", end="\r", flush=True)
 
 # visualize the predictions
-plt.figure()
-plt.plot(y_test, 'o--', color="red", label="Original data")
-plt.plot(pred[0], 'o--', color="cyan", label="Predicted data")
-plt.legend()
-plt.savefig(args["plot"]+'/test_plot.png')
+fig = plt.figure(figsize=(20, 10))
+ax1 = fig.add_subplot()
+plt.grid()
+ax1.set_title(f"Original vs predicted data for the {n_past} past times of the test")
+ax1.set_xlabel("time")
+ax1.set_ylabel("temperature")
+ax1.plot(test_set[-n_past:], "o--", color="red", label="Original data")
+ax1.plot(res_test[-n_past:], "o--", color="cyan", label="Predicted data")
+ax1.tick_params(axis="y")
+ax2 = ax1.twinx()
+ax2.set_ylabel("temperature difference", color="green")
+ax2.bar(
+    range(0, n_past),
+    np.array(res_test[-n_past:]) - np.array(test_set[-n_past:]),
+    color="green",
+    width=0.5,
+    alpha=0.2,
+)
+ax2.tick_params(axis="y", color="green")
+
+fig.tight_layout()
+plt.savefig(args["plot"] + "/test_plot_comparison.png")
+
+plt.figure(figsize=(20, 10))
+plt.grid()
+plt.title(f"Difference between original and predicted data for the whole test")
+plt.xlabel("time")
+plt.ylabel("temperature difference")
+plt.plot(
+    range(n_past, len(res_test)),
+    np.array(res_test[n_past:]) - np.array(test_set[n_past:]),
+    "+-.",
+    lw=0.5,
+)
+plt.savefig(args["plot"] + "/test_plot_difference.png")
 
 lg.info(f"End of the script within {round(time.time()-start,2)} seconds.")
