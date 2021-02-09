@@ -2,7 +2,7 @@
 
 This program forecasts temperatures for a given period of time, based on data over a given period of time.
 
-![Output Example](https://raw.githubusercontent.com/artperrin/simple-temperature-forecasting/master/readme_figures/example.PNG)
+![Output Example](https://raw.githubusercontent.com/artperrin/simple-temperature-forecasting/master/readme_figures/example.png)
 
 This repository contains :
 * the model_training.py script to train one's own model,
@@ -55,11 +55,11 @@ Be careful that those two last parameters are used in the model_apply.py script,
 In addition to the trained model, the model_training.py outputs some useful plots (by default in a `./plot` folder) :
 * the training data history (loss and accuracy),
 
-![output loss-accuracy](https://raw.githubusercontent.com/artperrin/simple-temperature-forecasting/master/readme_figures/ex_model_stat.PNG)
+![output loss-accuracy](https://raw.githubusercontent.com/artperrin/simple-temperature-forecasting/master/readme_figures/ex_model_stat.png)
 
 * the comparison between original and predicted data.
 
-![output test plot](https://raw.githubusercontent.com/artperrin/simple-temperature-forecasting/master/readme_figures/ex_test_plot.PNG)
+![output test plot](https://raw.githubusercontent.com/artperrin/simple-temperature-forecasting/master/readme_figures/ex_test_plot.png)
 
 
 ## Use the model
@@ -86,13 +86,14 @@ $ python model_training.py --help
 Some precision about the `--extended` argument : it is directly linked to the `N_FUTUR` parameter from config.py. It represents the number of time units to be predicted *by the trained model*. However, the user can choose to predict more or less time units with the model_training.py script :
 * predict less : the results are truncated to match the user's expectations,
 
-![output less predicted](https://raw.githubusercontent.com/artperrin/simple-temperature-forecasting/master/readme_figures/example_less.PNG)
+![output less predicted](https://raw.githubusercontent.com/artperrin/simple-temperature-forecasting/master/readme_figures/example_less.png)
 
 * predict more : day-to-day predictions are made by predicting the next temperature, then taking it into account to predict the next one, and so on.
 
-![output less predicted](https://raw.githubusercontent.com/artperrin/simple-temperature-forecasting/master/readme_figures/example_more.PNG)
+![output less predicted](https://raw.githubusercontent.com/artperrin/simple-temperature-forecasting/master/readme_figures/example_more.png)
 
 The size of the input dataset is not important *as long as there are enough entries* (the minimum number of entries needed is the `N_PAST` parameter from config.py). If the size is too big, *only the last `N_PAST` entries will be taken into account*.
 
 ## Data credits
-*to be continued*
+
+The default model in this repository (model.h5) has been trained with data from Berkeley Earth, found [here](https://www.kaggle.com/berkeleyearth/climate-change-earth-surface-temperature-data).
