@@ -68,7 +68,6 @@ lg.info("Reading the data...")
 
 # it is assumed that the data are written in the second column, separated by commas, with no header
 dataset = pd.read_csv(args["dataset"], header=None, sep=",")
-# dataset = pd.read_csv('data/weather_processed.csv', header=None, sep=',')
 data = dataset[1]
 
 # partition the data into training and testing splits
