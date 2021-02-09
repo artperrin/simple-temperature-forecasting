@@ -44,7 +44,7 @@ and the forecasting method parameters:
 * the number of time units to forecast (`N_FUTUR`),
 * the number of time units based on which the forecast will be computed (`N_PAST`).
 
-For example, with `N_FUTUR = 4` and `N_PAST = 30`, the model will forecast the next 4 days temperatures based on the last 30 days.
+For example, with `N_FUTUR = 4` and `N_PAST = 30`, the model will forecast the next 4 time units temperatures based on the last 30 time units.
 
 Be careful that those two last parameters are used in the model_apply.py script, so if the user changes them *after having trained his model* and runs the model_apply.py script, he may encounter some errors. 
 
@@ -81,7 +81,7 @@ and one can find their usage using the command line:
 $ python model_training.py --help
 ```
 
-Some precision about the `--extended` argument : it is directly linked to the `N_FUTUR` parameter from config.py. It represents the number of time units to be predicted *by the trained model*. However, the user can choose to predict more or less time units with the model_training.py script :
+Some precisions about the `--extended` argument : it is directly linked to the `N_FUTUR` parameter from config.py. It represents the number of time units to be predicted *by the trained model*. However, the user can choose to predict more or less time units with the model_training.py script :
 * predict less : the results are truncated to match the user's expectations,
 
 ![output less predicted](https://raw.githubusercontent.com/artperrin/simple-temperature-forecasting/master/readme_figures/example_less.png)
