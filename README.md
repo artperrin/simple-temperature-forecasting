@@ -2,9 +2,7 @@
 
 This program forecasts temperatures for a given period of time, based on data over a given period of time.
 
-![Output Example](https://raw.githubusercontent.com/artperrin/simple-temperature-forecasting/master/readme_figures/example.png)
-
-This repository contains :
+This repository contains:
 * the model_training.py script to train one's own model,
 * the model_apply.py script to use a .h5 model,
 * a config.py file to set parameters for model training,

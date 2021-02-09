@@ -119,11 +119,11 @@ lg.info(f"End of running process within {round(time.time()-start,2)} seconds.")
 
 # plotting the results
 lg.info("Exporting the output...")
-
+nbtime = args["extended"]
 plt.figure(figsize=(20, 10))
 plt.grid()
 plt.plot(range(1, len(res) + 1), res, "o--")
-plt.title(f"Predicted temperatures for the next {config.N_FUTUR} time units")
+plt.title(f"Predicted temperatures for the next {nbtime} time units")
 plt.xlabel("time")
 plt.ylabel("temperature")
 plt.savefig(args["plot"] + "/predictions.png")
