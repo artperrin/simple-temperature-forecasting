@@ -74,12 +74,11 @@ data = dataset[1]
 # 5-day prediction using 30 days data
 lg.info("Preparing dataset for training...")
 
-train_split = config.TRAIN_SPLIT
-split_idx = int(len(data) * train_split)
-training_set = data[:split_idx]
-
 n_future = config.N_FUTUR  # Next days weather forecast
 n_past = config.N_PAST  # Past days to predict
+
+split_idx = int(len(data) - n_past - n_future)
+training_set = data[:split_idx]
 
 x_train = []
 y_train = []
@@ -96,15 +95,15 @@ lg.info("Building of the model...")
 model = Sequential()
 model.add(
     Bidirectional(
-        LSTM(units=30, return_sequences=True, input_shape=(x_train.shape[1], 1))
+        LSTM(units=n_past, return_sequences=True, input_shape=(x_train.shape[1], 1))
     )
 )
 model.add(Dropout(0.2))
-model.add(LSTM(units=30, return_sequences=True))
+model.add(LSTM(units=n_past, return_sequences=True))
 model.add(Dropout(0.2))
-model.add(LSTM(units=30, return_sequences=True))
+model.add(LSTM(units=n_past, return_sequences=True))
 model.add(Dropout(0.2))
-model.add(LSTM(units=30))
+model.add(LSTM(units=n_past))
 model.add(Dropout(0.2))
 model.add(Dense(units=n_future, activation="linear"))
 
@@ -124,14 +123,20 @@ model.save("./model.h5", save_format="h5")
 
 # plot the training loss and accuracy
 N = EPOCHS
-plt.style.use("ggplot")
-plt.figure()
-plt.plot(np.arange(0, N), M.history["loss"], label="train_loss")
-plt.plot(np.arange(0, N), M.history["accuracy"], label="train_acc")
-plt.title("Training Loss and Accuracy")
-plt.xlabel("Epoch #")
-plt.ylabel("Loss/Accuracy")
-plt.legend(loc="lower left")
+fig = plt.figure(figsize=(20, 10))
+ax1 = fig.add_subplot()
+plt.grid()
+ax1.set_title("Training Loss/Accuracy")
+ax1.set_xlabel("Epochs")
+ax1.set_ylabel("Loss (mean square error)", color='red')
+ax1.plot(np.arange(0, N), M.history["loss"], color="red", lw=1.5)
+ax1.tick_params(axis="y", color='red')
+ax2 = ax1.twinx()
+ax2.set_ylabel("Accuracy (percent)", color="green")
+ax2.plot(np.arange(0, N), M.history["accuracy"], color="green")
+ax2.tick_params(axis="y", color="green")
+
+fig.tight_layout()
 plt.savefig(args["plot"] + "/model_stat.png")
 
 
@@ -141,15 +146,11 @@ lg.info("Testing the model...")
 model = load_model("model.h5")
 
 test_set = data[split_idx:].to_numpy()
-
-res_test = test_set[:n_past]
-
-for i in range(len(test_set) - n_past):
-    to_predict = np.array(test_set[i : i + n_past])
-    to_predict = np.reshape(to_predict, (1, to_predict.shape[0], 1))
-    pred = model.predict(to_predict)
-    res_test = np.concatenate((res_test, pred[0][0]), axis=None)
-    print(f"Progress of test : {i}/{len(test_set)-n_past}", end="\r", flush=True)
+test_set = np.array(test_set)
+test_x = test_set[:-n_future]
+test_y = test_set[-n_future:]
+to_predict = np.reshape(test_x, (1, test_x.shape[0], 1))
+pred = model.predict(to_predict)
 
 # visualize the predictions
 fig = plt.figure(figsize=(20, 10))
@@ -158,14 +159,15 @@ plt.grid()
 ax1.set_title(f"Original vs predicted data for the {n_past} past times of the test")
 ax1.set_xlabel("time")
 ax1.set_ylabel("temperature")
-ax1.plot(test_set[-n_past:], "o--", color="red", label="Original data")
-ax1.plot(res_test[-n_past:], "o--", color="cyan", label="Predicted data")
+ax1.plot(test_y, "o--", color="red", label="Original data", lw=1.5)
+ax1.plot(pred[0], "o--", color="cyan", label="Predicted data", lw=1.5)
 ax1.tick_params(axis="y")
+ax1.legend()
 ax2 = ax1.twinx()
 ax2.set_ylabel("temperature difference", color="green")
 ax2.bar(
-    range(0, n_past),
-    np.array(res_test[-n_past:]) - np.array(test_set[-n_past:]),
+    range(len(test_y)),
+    np.abs(np.array(test_y) - np.array(pred[0])),
     color="green",
     width=0.5,
     alpha=0.2,
@@ -173,19 +175,6 @@ ax2.bar(
 ax2.tick_params(axis="y", color="green")
 
 fig.tight_layout()
-plt.savefig(args["plot"] + "/test_plot_comparison.png")
-
-plt.figure(figsize=(20, 10))
-plt.grid()
-plt.title(f"Difference between original and predicted data for the whole test")
-plt.xlabel("time")
-plt.ylabel("temperature difference")
-plt.plot(
-    range(n_past, len(res_test)),
-    np.array(res_test[n_past:]) - np.array(test_set[n_past:]),
-    "+-.",
-    lw=0.5,
-)
-plt.savefig(args["plot"] + "/test_plot_difference.png")
+plt.savefig(args["plot"] + "/test_plot.png")
 
 lg.info(f"End of the script within {round(time.time()-start,2)} seconds.")

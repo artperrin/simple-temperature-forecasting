@@ -1,5 +1,6 @@
 en
 temp
 .vscode
+__pycache__
 data
 plot
