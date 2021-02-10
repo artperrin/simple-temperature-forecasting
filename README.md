@@ -73,8 +73,10 @@ Then, in a python terminal, use the command line:
 $ python model_apply.py --dataset path/to/data
 ```
 There are a few optionnal arguments: 
-* `--plot path/to/folder/to/plot/visualization`
+* `--output str`
+* `--outpath path/to/folder/to/write/output`
 * `--extended int`
+* `--compare path/to/data/to/compare/with`
 
 and one can find their usage using the command line:
 ```sh

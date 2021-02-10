@@ -77,7 +77,11 @@ lg.info("Preparing dataset for training...")
 n_future = config.N_FUTUR  # Next days weather forecast
 n_past = config.N_PAST  # Past days to predict
 
-split_idx = int(len(data) - n_past - n_future)
+if args["test"]=='y': # if the user asks for a test process
+    split_idx = int(len(data) - n_past - n_future)
+else: # if not, take more data
+    split_idx = int(len(data))
+
 training_set = data[:split_idx]
 
 x_train = []
@@ -98,13 +102,13 @@ model.add(
         LSTM(units=n_past, return_sequences=True, input_shape=(x_train.shape[1], 1))
     )
 )
-model.add(Dropout(0.2))
+model.add(Dropout(0.4))
 model.add(LSTM(units=n_past, return_sequences=True))
-model.add(Dropout(0.2))
+model.add(Dropout(0.4))
 model.add(LSTM(units=n_past, return_sequences=True))
-model.add(Dropout(0.2))
+model.add(Dropout(0.4))
 model.add(LSTM(units=n_past))
-model.add(Dropout(0.2))
+model.add(Dropout(0.3))
 model.add(Dense(units=n_future, activation="linear"))
 
 # Compiling the RNN
@@ -118,7 +122,7 @@ M = model.fit(x_train, y_train, epochs=EPOCHS, batch_size=BS, validation_split=0
 lg.info(f"End of the model training within {round(time.time()-start,2)} seconds.")
 
 # serialize the model to disk
-lg.info("Saving mask detector model...")
+lg.info("Saving model...")
 model.save("./model.h5", save_format="h5")
 
 # plot the training loss and accuracy
@@ -129,52 +133,56 @@ plt.grid()
 ax1.set_title("Training Loss/Accuracy")
 ax1.set_xlabel("Epochs")
 ax1.set_ylabel("Loss (mean square error)", color='red')
-ax1.plot(np.arange(0, N), M.history["loss"], color="red", lw=1.5)
+ax1.set_yscale("log", base=10)
+ax1.plot(np.arange(0, N), M.history["loss"], '--', color="red", lw=1.5, label='training')
+ax1.plot(np.arange(0, N), M.history["val_loss"], '-.', color="red", lw=1.5, label='validation')
 ax1.tick_params(axis="y", color='red')
 ax2 = ax1.twinx()
 ax2.set_ylabel("Accuracy (percent)", color="green")
-ax2.plot(np.arange(0, N), M.history["accuracy"], color="green")
+ax2.plot(np.arange(0, N), M.history["accuracy"], '--', color="green", label='training')
+ax2.plot(np.arange(0, N), M.history["val_accuracy"], '-.', color="green", label='validation')
 ax2.tick_params(axis="y", color="green")
 
+fig.legend()
 fig.tight_layout()
 plt.savefig(args["plot"] + "/model_stat.png")
 
+if args["test"]=='y':
+    # test the model
+    lg.info("Testing the model...")
 
-# test the model
-lg.info("Testing the model...")
+    model = load_model("model.h5")
 
-model = load_model("model.h5")
+    test_set = data[split_idx:].to_numpy()
+    test_set = np.array(test_set)
+    test_x = test_set[:-n_future]
+    test_y = test_set[-n_future:]
+    to_predict = np.reshape(test_x, (1, test_x.shape[0], 1))
+    pred = model.predict(to_predict)
 
-test_set = data[split_idx:].to_numpy()
-test_set = np.array(test_set)
-test_x = test_set[:-n_future]
-test_y = test_set[-n_future:]
-to_predict = np.reshape(test_x, (1, test_x.shape[0], 1))
-pred = model.predict(to_predict)
+    # visualize the predictions
+    fig = plt.figure(figsize=(20, 10))
+    ax1 = fig.add_subplot()
+    plt.grid()
+    ax1.set_title(f"Original vs predicted data for the {n_past} past times of the test")
+    ax1.set_xlabel("time")
+    ax1.set_ylabel("temperature")
+    ax1.plot(test_y, "o--", color="red", label="Original data", lw=1.5)
+    ax1.plot(pred[0], "o--", color="cyan", label="Predicted data", lw=1.5)
+    ax1.tick_params(axis="y")
+    ax1.legend()
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("temperature difference", color="green")
+    ax2.bar(
+        range(len(test_y)),
+        np.abs(np.array(test_y) - np.array(pred[0])),
+        color="green",
+        width=0.5,
+        alpha=0.2,
+    )
+    ax2.tick_params(axis="y", color="green")
 
-# visualize the predictions
-fig = plt.figure(figsize=(20, 10))
-ax1 = fig.add_subplot()
-plt.grid()
-ax1.set_title(f"Original vs predicted data for the {n_past} past times of the test")
-ax1.set_xlabel("time")
-ax1.set_ylabel("temperature")
-ax1.plot(test_y, "o--", color="red", label="Original data", lw=1.5)
-ax1.plot(pred[0], "o--", color="cyan", label="Predicted data", lw=1.5)
-ax1.tick_params(axis="y")
-ax1.legend()
-ax2 = ax1.twinx()
-ax2.set_ylabel("temperature difference", color="green")
-ax2.bar(
-    range(len(test_y)),
-    np.abs(np.array(test_y) - np.array(pred[0])),
-    color="green",
-    width=0.5,
-    alpha=0.2,
-)
-ax2.tick_params(axis="y", color="green")
-
-fig.tight_layout()
-plt.savefig(args["plot"] + "/test_plot.png")
+    fig.tight_layout()
+    plt.savefig(args["plot"] + "/test_plot.png")
 
 lg.info(f"End of the script within {round(time.time()-start,2)} seconds.")

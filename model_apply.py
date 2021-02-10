@@ -35,11 +35,18 @@ ap.add_argument(
     help="path to the .csv file",
 )
 ap.add_argument(
-    "-p",
-    "--plot",
+    "-o",
+    "--output",
     type=str,
-    default="./plot",
-    help="path to folder to plot the prediction",
+    default=None,
+    help="output type desired plot/csv (both by default)",
+)
+ap.add_argument(
+    "-p",
+    "--outpath",
+    type=str,
+    default="./out",
+    help="path to folder to plot/write the prediction",
 )
 ap.add_argument(
     "-e",
@@ -47,6 +54,13 @@ ap.add_argument(
     type=int,
     default=config.N_FUTUR,
     help="mode of prediction : if <= N_FUTUR, the model will predict the <= N_FUTUR days temperatures ; if >0, the model will predict more days based on a sliding day-to-day prediction.",
+)
+ap.add_argument(
+    "-c",
+    "--compare",
+    type=str,
+    default='n',
+    help="path to data to compare the predictions with",
 )
 args = vars(ap.parse_args())
 
@@ -56,7 +70,7 @@ if args["extended"] > config.N_FUTUR:
     extended = True
     units_to_predict = args["extended"]
 else:
-    units_to_predict = -1 # to ignore "possibly unbound" warning
+    units_to_predict = -1  # to ignore "possibly unbound" warning
 
 # beginning of the script
 lg.info("Reading the data...")
@@ -117,15 +131,47 @@ else:
 
 lg.info(f"End of running process within {round(time.time()-start,2)} seconds.")
 
-# plotting the results
 lg.info("Exporting the output...")
-nbtime = args["extended"]
-plt.figure(figsize=(20, 10))
-plt.grid()
-plt.plot(range(1, len(res) + 1), res, "o--")
-plt.title(f"Predicted temperatures for the next {nbtime} time units")
-plt.xlabel("time")
-plt.ylabel("temperature")
-plt.savefig(args["plot"] + "/predictions.png")
+if args["output"] == "csv":
+    # exporting to csv
+    res = pd.DataFrame(res)
+    res.to_csv(args["outpath"] + "/predictions.csv", header=None, sep=",")
+elif args["output"] == "plot":
+    # plotting the results
+    nbtime = args["extended"]
+    plt.figure(figsize=(20, 10))
+    plt.grid()
+    plt.plot(range(1, len(res) + 1), res, "o--", label='predicted data')
+
+    if not args["compare"]=='n':  # if there are data to compare the predictions with
+        comp = pd.read_csv(args["compare"], header=None, sep=",")
+        comp = comp[1].to_numpy()
+        plt.plot(range(1, len(comp) + 1), comp, "o--", label='comparison')
+        plt.legend()
+
+    plt.title(f"Predicted temperatures for the next {nbtime} time units")
+    plt.xlabel("time")
+    plt.ylabel("temperature")
+    plt.savefig(args["outpath"] + "/predictions.png")
+else:
+    # plotting the results and exporting to csv
+    nbtime = args["extended"]
+    plt.figure(figsize=(20, 10))
+    plt.grid()
+    plt.plot(range(1, len(res) + 1), res, "o--", label='predicted data')
+
+    if not args["compare"]=='n':  # if there are data to compare the predictions with
+        comp = pd.read_csv(args["compare"], header=None, sep=",")
+        comp = comp[1].to_numpy()
+        plt.plot(range(1, len(comp) + 1), comp, "o--", label='comparison')
+        plt.legend()
+
+    plt.title(f"Predicted temperatures for the next {nbtime} time units")
+    plt.xlabel("time")
+    plt.ylabel("temperature")
+    plt.savefig(args["outpath"] + "/predictions.png")
+
+    res = pd.DataFrame(res)
+    res.to_csv(args["outpath"] + "/predictions.csv", header=None, sep=",")
 
 lg.info(f"End of the script within {round(time.time()-start,2)} seconds.")
