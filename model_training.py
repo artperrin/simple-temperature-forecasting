@@ -7,10 +7,8 @@ import time
 import argparse
 import config
 from keras.models import Sequential
-from keras.layers import Bidirectional
 from keras.layers import Dense
 from keras.layers import LSTM
-from keras.layers import Dropout
 from tensorflow.keras.models import load_model
 
 # general setup
@@ -93,31 +91,21 @@ for i in range(0, len(training_set) - n_past - n_future + 1):
 # format the data
 x_train, y_train = np.array(x_train), np.array(y_train)
 x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+
 # build the RNN model
 lg.info("Building of the model...")
 
 model = Sequential()
-model.add(
-    Bidirectional(
-        LSTM(units=n_past, return_sequences=True, input_shape=(x_train.shape[1], 1))
-    )
-)
-model.add(Dropout(0.4))
-model.add(LSTM(units=n_past, return_sequences=True))
-model.add(Dropout(0.4))
-model.add(LSTM(units=n_past, return_sequences=True))
-model.add(Dropout(0.4))
-model.add(LSTM(units=n_past))
-model.add(Dropout(0.3))
-model.add(Dense(units=n_future, activation="linear"))
+model.add(LSTM(units=15, input_shape=(x_train.shape[1], 1), dropout=.1))
+model.add(Dense(units=n_future))
 
 # Compiling the RNN
 model.compile(optimizer="adam", loss="mean_squared_error", metrics=["accuracy"])
 
-# train the model
+# # train the model
 lg.info("Start training...")
 
-M = model.fit(x_train, y_train, epochs=EPOCHS, batch_size=BS, validation_split=0.1)
+M = model.fit(x_train, y_train, epochs=EPOCHS, batch_size=BS, validation_split=.15)
 
 lg.info(f"End of the model training within {round(time.time()-start,2)} seconds.")
 
